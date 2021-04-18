@@ -183,7 +183,6 @@ with open(nomeArquivo,'w') as testwritefile:
     testwritefile.write("http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n")
     testwritefile.write("<graph id=\"\" edgedefault=\"directed\">\n")
     testwritefile.write("<key id=\"d0\" for=\"node\" attr.name=\"color\" attr.type=\"string\"> <default>red</default> </key>\n")
-    # testwritefile.write("<key id=\"d1\" for=\"node\" attr.name=\"authors\" attr.type=\"string\"> <default></default> </key>")
     testwritefile.write("<key id=\"d1\" for=\"node\" attr.name=\"retractionDate\" attr.type=\"string\"> <default></default> </key>\n")
     testwritefile.write("<key id=\"d2\" for=\"node\" attr.name=\"publicationDate\" attr.type=\"string\"> <default></default> </key>\n")
     testwritefile.write("<key id=\"d3\" for=\"edge\" attr.name=\"weight\" attr.type=\"double\"> <default>1</default> </key>\n")
@@ -206,17 +205,12 @@ with open(nomeArquivo,'w') as testwritefile:
             j = j + 1
             continue
 
-        paper.keys()  
-
-        #dict_keys disponiveis:
-        #dict_keys(['abstract', 'arxivId', 'authors', 'citationVelocity', 'citations', 'doi','influentialCitationCount', 'paperId', 'references', 'title', 'topics', 'url', 'venue', 'year'])
-
+        paper.keys()
         article_url = doi_api + artigo['doi']
         r = requests.get(url = article_url)
         response = r.json()
         publication_date = response["values"][0]["timestamp"].split('T')[0]
         title = escape(paper['title']).replace('"', '') #titulo do artigo retratado ja com escape
-
         testwritefile.write("<node id=\"" +
                             artigo['doi'] + "\"><data key=\"d0\">red</data>  <data key=\"d1\">"+
                             artigo['retractionDate'] +"</data> <data key=\"d2\">"+
@@ -226,6 +220,7 @@ with open(nomeArquivo,'w') as testwritefile:
 
         i=0 #contador de citacoes, pensei em usar de alguma forma pra dizer o peso da aresta, usar o page rank ou algo do tipo
         citacoes_cadastradas= []
+        edges_cadastrados= []
         citado_apos_retratacao = 0 # contador de citações após retratação
         
         for citacao in paper['citations']:
@@ -233,7 +228,7 @@ with open(nomeArquivo,'w') as testwritefile:
             tituloCitacao = escape(citacao['title']).replace('"', '')  #titulo do artigo que cita o retratado, ja com escape
             citation_id = ''
             if citacao['doi'] != None:
-                citation_id = citacao['doi']
+                citation_id = citacao['doi'].upper()
             else:
                 citation_id = str(citation_article_index)
                 citation_article_index += 1
@@ -267,12 +262,11 @@ with open(nomeArquivo,'w') as testwritefile:
                                     str(citacao['isInfluential']) + "</data> <data key=\"d8\">" +
                                     artigo['doi'] + "</data></node>\n") #escrevo o no do artigo que cita o retratado
                 citacoes_cadastradas.append(citation_id)
-            testwritefile.write("<edge source=\""+ citation_id +"\" target=\"" + artigo['doi'] + "\"><data key=\"d3\">"
-                               + str(weight) + "</data><data key=\"d4\">"
-                               + colorEdge + "</data><data key=\"d9\">"
-                               + str(citacao_apos_retratacao_boolean) + "</data><data key=\"d10\">" +
-                                    str(citacao['isInfluential']) + "</data></edge>\n") #escrevo a aresta
-            i = i + 1     
+            edge = "<edge source=\""+ citation_id +"\" target=\"" + artigo['doi'] + "\"><data key=\"d3\">"                     + str(weight) + "</data><data key=\"d4\">"                     + colorEdge + "</data><data key=\"d9\">"                     + str(citacao_apos_retratacao_boolean) + "</data><data key=\"d10\">" +                          str(citacao['isInfluential']) + "</data></edge>\n" 
+            if not citation_id + "|" + artigo['doi'] in edges_cadastrados:  #verifico se já existe aquela aresta antes de criar uma nova                       
+              testwritefile.write(edge) #escrevo a aresta
+              edges_cadastrados.append(citation_id + "|" + artigo['doi'])
+              i = i + 1       
         
         print(title)
         print("ano publicação: " + str(publication_date))
